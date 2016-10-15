@@ -1,9 +1,6 @@
 ﻿# IPsec VPN Server on Docker
 
-[![Build Status](https://static.ls20.com/travis-ci/docker-ipsec-vpn-server.svg)](https://travis-ci.org/mobilejazz/docker-ipsec-vpn-server) 
-[![Author](https://static.ls20.com/travis-ci/author.svg)](#author) 
-[![Docker Stars](https://img.shields.io/docker/stars/hwdsl2/ipsec-vpn-server.svg?maxAge=3600)](https://hub.docker.com/r/hwdsl2/ipsec-vpn-server) 
-[![Docker Pulls](https://img.shields.io/docker/pulls/hwdsl2/ipsec-vpn-server.svg?maxAge=3600)](https://hub.docker.com/r/hwdsl2/ipsec-vpn-server)
+[![Build Status](https://travis-ci.org/mobilejazz/docker-ipsec-vpn-server.svg)](https://travis-ci.org/mobilejazz/docker-ipsec-vpn-server)
 
 Docker image to run an IPsec VPN server, with support for both `IPsec/L2TP` and `IPsec/XAuth ("Cisco IPsec")`.
 
