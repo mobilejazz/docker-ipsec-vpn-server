@@ -1,5 +1,5 @@
 FROM debian:jessie
-MAINTAINER Lin Song <linsongui@gmail.com>
+MAINTAINER Jordi Gimenez <info@mobilejazz.com>
 
 ENV REFRESHED_AT 2016-10-01
 ENV SWAN_VER 3.18
@@ -34,13 +34,17 @@ RUN sed -i "s/httpredir\.debian\.org/ftp.us.debian.org/g" /etc/apt/sources.list 
          libunbound-dev xmlto perl-modules perl \
     && apt-get -yqq autoremove \
     && apt-get -y clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm /etc/ipsec.secrets /etc/ppp/chap-secrets
 
 COPY ./run.sh /run.sh
-RUN chmod 755 /run.sh
+COPY ./adduser.sh /adduser.sh
+COPY ./lsusers.sh /lsusers.sh
+COPY ./rmuser.sh /rmuser.sh
+RUN chmod 755 /run.sh /adduser.sh /lsusers.sh /rmuser.sh
 
 EXPOSE 500/udp 4500/udp
 
-VOLUME ["/lib/modules"]
+VOLUME ["/lib/modules", "/etc/ppp/chap-secrets", "/etc/ipsec.d/passwd", "/etc/ipsec.secrets"]
 
 CMD ["/run.sh"]

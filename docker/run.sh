@@ -26,33 +26,12 @@ if [ ! -f /.dockerenv ]; then
   exiterr "This script ONLY runs in a Docker container."
 fi
 
-if [ -z "$VPN_IPSEC_PSK" ] && [ -z "$VPN_USER" ] && [ -z "$VPN_PASSWORD" ]; then
-  if [ -f /vpn-gen.env ]; then
-    echo
-    echo "Retrieving previously generated VPN credentials..."
-    . /vpn-gen.env
-  else
-    echo
-    echo "VPN credentials not set by user. Generating random PSK and password..."
-    VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 16)"
-    VPN_USER=vpnuser
-    VPN_PASSWORD="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 16)"
-    echo "VPN_IPSEC_PSK=$VPN_IPSEC_PSK" > /vpn-gen.env
-    echo "VPN_USER=$VPN_USER" >> /vpn-gen.env
-    echo "VPN_PASSWORD=$VPN_PASSWORD" >> /vpn-gen.env
-    chmod 600 /vpn-gen.env
-  fi
-fi
+VPN_IPSEC_PSK="$(awk '{print $5}' /etc/ipsec.secrets | cut -d'"' -f2)"
 
-if [ -z "$VPN_IPSEC_PSK" ] || [ -z "$VPN_USER" ] || [ -z "$VPN_PASSWORD" ]; then
-  exiterr "All VPN credentials must be specified. Edit your 'env' file and re-enter them."
+if [ -z "$VPN_IPSEC_PSK" ]; then
+  VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 30)"
+  echo "Generated PSK: $VPN_IPSEC_PSK"
 fi
-
-case "$VPN_IPSEC_PSK $VPN_USER $VPN_PASSWORD" in
-  *[\\\"\']*)
-    exiterr "VPN credentials must not contain any of these characters: \\ \" '"
-    ;;
-esac
 
 echo
 echo 'Trying to auto discover IPs of this server...'
@@ -167,18 +146,6 @@ lcp-echo-interval 30
 connect-delay 5000
 EOF
 
-# Create VPN credentials
-cat > /etc/ppp/chap-secrets <<EOF
-# Secrets for authentication using CHAP
-# client  server  secret  IP addresses
-"$VPN_USER" l2tpd "$VPN_PASSWORD" *
-EOF
-
-VPN_PASSWORD_ENC=$(openssl passwd -1 "$VPN_PASSWORD")
-cat > /etc/ipsec.d/passwd <<EOF
-$VPN_USER:$VPN_PASSWORD_ENC:xauth-psk
-EOF
-
 # Update sysctl settings
 SYST='/sbin/sysctl -e -q -w'
 $SYST kernel.msgmnb=65536
@@ -222,30 +189,6 @@ iptables -I FORWARD 6 -s 192.168.43.0/24 -o eth+ -j ACCEPT
 iptables -A FORWARD -j DROP
 iptables -t nat -I POSTROUTING -s 192.168.43.0/24 -o eth+ -m policy --dir out --pol none -j SNAT --to-source "$PRIVATE_IP"
 iptables -t nat -I POSTROUTING -s 192.168.42.0/24 -o eth+ -j SNAT --to-source "$PRIVATE_IP"
-
-# Update file attributes
-chmod 600 /etc/ipsec.secrets /etc/ppp/chap-secrets /etc/ipsec.d/passwd
-
-cat <<EOF
-
-================================================
-
-IPsec VPN server is now ready for use!
-
-Connect to your new VPN with these details:
-
-Server IP: $PUBLIC_IP
-IPsec PSK: $VPN_IPSEC_PSK
-Username: $VPN_USER
-Password: $VPN_PASSWORD
-
-Write these down. You'll need them to connect!
-
-Setup VPN clients: https://git.io/vpnclients
-
-================================================
-
-EOF
 
 # Load IPsec NETKEY kernel module
 modprobe af_key
