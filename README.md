@@ -93,7 +93,7 @@ Advanced users can download and compile the source yourself from GitHub:
 ```
 git clone https://github.com/mobilejazz/docker-ipsec-vpn-server.git
 cd docker-ipsec-vpn-server/docker
-docker build -t mobilejazz/ipsec-vpn-server .
+docker build -t mobilejazz/docker-ipsec-vpn-server .
 ```
 
 ## See also
