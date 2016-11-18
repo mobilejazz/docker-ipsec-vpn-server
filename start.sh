@@ -18,4 +18,4 @@ docker run \
     -v /lib/modules:/lib/modules:ro \
     -d --privileged \
     --restart=always \
-    mobilejazz/ipsec-vpn-server
+    mobilejazz/docker-ipsec-vpn-server
