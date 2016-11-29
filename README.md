@@ -4,7 +4,7 @@
 
 Docker image to run an IPsec VPN server, with support for both `IPsec/L2TP` and `IPsec/XAuth ("Cisco IPsec")`.
 
-Based on [Lin Song's IPsec VPN Server on Docker](https://github.com/hwdsl2/docker-ipsec-vpn-server) modified for multiple users.
+Made with ❤️ from Barcelona by [Mobile Jazz](https://mobilejazz.com), the Web and App development company for startups. Based on [Lin Song's IPsec VPN Server on Docker](https://github.com/hwdsl2/docker-ipsec-vpn-server) modified for multiple users.
 
 ## Install Docker
 
