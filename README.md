@@ -106,6 +106,6 @@ docker build -t mobilejazz/docker-ipsec-vpn-server .
 
 ## License
 
-    This project is distributed with a Creative Commons Attribution and Share Alike license. See [LICENSE.md](LICENSE.md) file to read the complete license.
+    This project is distributed with a Creative Commons Attribution and Share Alike license. See LICENSE.md file to read the complete license.
 
 Made with ❤️ from Barcelona by [Mobile Jazz](https://mobilejazz.com), the Web and App development company for startups.
