@@ -15,7 +15,7 @@ case "$VPN_USER" in
     ;;
 esac
 
-SHARED_SECRET=$(cut -d'"' -f2 etc/ipsec.secrets)
+SHARED_SECRET=$(cut -d'"' -f2 /etc/ipsec.secrets)
 echo "Shared secret: $SHARED_SECRET"
 
 VPN_PASSWORD="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 20)"
