@@ -17,6 +17,8 @@ Follow [these instructions](https://docs.docker.com/engine/installation/) to get
 
 ### Start the IPsec VPN server
 
+Download [this repo](https://github.com/mobilejazz/docker-ipsec-vpn-server/archive/master.zip), `unzip` it and `cd` into it.
+
 Start a new Docker container with the following command:
 
 ```
