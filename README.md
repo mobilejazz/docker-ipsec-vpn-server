@@ -91,6 +91,12 @@ The ports that are exposed for this container to work are:
 
 * 4500/udp and 500/udp for IPsec
 
+## Extending the configuration
+
+The default configuration will work out of the box in most cases. However, you might want to tweak some little settings,
+like the routing table, or maybe something specific to your environment. If you mount a `/pre-up.sh` script, it will be executed
+before starting the VPN.
+
 ## Build from source code
 
 Advanced users can download and compile the source yourself from GitHub:
