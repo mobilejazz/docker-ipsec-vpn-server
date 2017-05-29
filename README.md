@@ -97,6 +97,10 @@ The default configuration will work out of the box in most cases. However, you m
 like the routing table, or maybe something specific to your environment. If you mount a `/pre-up.sh` script, it will be executed
 before starting the VPN.
 
+## Backing up your VPN configuration
+
+When using the start script a new `etc` directory will be created. You can back up this directory.
+
 ## Build from source code
 
 Advanced users can download and compile the source yourself from GitHub:
