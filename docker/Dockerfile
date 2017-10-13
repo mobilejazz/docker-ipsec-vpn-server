@@ -1,8 +1,8 @@
 FROM debian:jessie
 MAINTAINER Jordi Gimenez <info@mobilejazz.com>
 
-ENV REFRESHED_AT 2016-10-01
-ENV SWAN_VER 3.18
+ENV REFRESHED_AT 2017-10-13
+ENV SWAN_VER 3.21
 
 WORKDIR /opt/src
 
@@ -13,7 +13,7 @@ RUN sed -i "s/httpredir\.debian\.org/ftp.us.debian.org/g" /etc/apt/sources.list 
          iproute gawk grep sed net-tools iptables \
          bsdmainutils libunbound2 libcurl3-nss \
          libnss3-tools libevent-dev libcap-ng0 xl2tpd \
-         libnss3-dev libnspr4-dev pkg-config libpam0g-dev \
+         libnss3-dev libnspr4-dev pkg-config libpam0g-dev libldns-dev \
          libcap-ng-dev libcap-ng-utils libselinux1-dev \
          libcurl4-nss-dev libsystemd-dev flex bison gcc make \
          libunbound-dev xmlto \
