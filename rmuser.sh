@@ -1,2 +1,3 @@
 #!/bin/sh
-docker exec -it ipsec-vpn-server /rmuser.sh "$1"
+
+docker exec -i -t ipsec-vpn-server /opt/src/rmuser.sh "$1"
