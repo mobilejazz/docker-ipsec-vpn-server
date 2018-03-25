@@ -5,7 +5,10 @@
 # DO NOT RUN THIS SCRIPT ON YOUR PC OR MAC! THIS IS ONLY MEANT TO BE RUN
 # IN A DOCKER CONTAINER!
 #
-# Copyright (C) 2016 Lin Song <linsongui@gmail.com>
+# This file is part of IPsec VPN Docker image, available at:
+# https://github.com/hwdsl2/docker-ipsec-vpn-server
+#
+# Copyright (C) 2016-2017 Lin Song <linsongui@gmail.com>
 # Based on the work of Thomas Sarlandie (Copyright 2012)
 #
 # This work is licensed under the Creative Commons Attribution-ShareAlike 3.0
@@ -16,55 +19,78 @@
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-exiterr() { echo "Error: ${1}" >&2; exit 1; }
+exiterr()  { echo "Error: $1" >&2; exit 1; }
+nospaces() { printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+noquotes() { printf '%s' "$1" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/"; }
+
 check_ip() {
-  IP_REGEX="^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
-  printf %s "${1}" | tr -d '\n' | grep -Eq "$IP_REGEX"
+  IP_REGEX='^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
+  printf '%s' "$1" | tr -d '\n' | grep -Eq "$IP_REGEX"
 }
 
-if [ ! -f /.dockerenv ]; then
+if [ ! -f "/.dockerenv" ]; then
   exiterr "This script ONLY runs in a Docker container."
 fi
 
-VPN_IPSEC_PSK="$(awk '{print $5}' /etc/ipsec.secrets | cut -d'"' -f2)"
+if ip link add dummy0 type dummy 2>&1 | grep -q "not permitted"; then
+cat 1>&2 <<'EOF'
+Error: This Docker image must be run in privileged mode.
 
-if [ -z "$VPN_IPSEC_PSK" ]; then
-  VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 30)"
-  echo "Generated PSK: $VPN_IPSEC_PSK"
+For detailed instructions, please visit:
+https://github.com/hwdsl2/docker-ipsec-vpn-server
+
+EOF
+  exit 1
 fi
+ip link delete dummy0 >/dev/null 2>&1
+
+mkdir -p /opt/src
+
+# Remove whitespace and quotes around VPN variables, if any
+VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 16)"
+VPN_IPSEC_PSK="$(nospaces "$VPN_IPSEC_PSK")"
+VPN_IPSEC_PSK="$(noquotes "$VPN_IPSEC_PSK")"
+
+case "$VPN_IPSEC_PSK" in
+  *[\\\"\']*)
+    exiterr "VPN credentials must not contain these special characters: \\ \" '"
+    ;;
+esac
 
 echo
-echo 'Trying to auto discover IPs of this server...'
+echo 'Trying to auto discover IP of this server...'
 
-# In case auto IP discovery fails, you may manually enter the public IP
-# of this server in your 'env' file, using variable 'VPN_PUBLIC_IP'.
+# In case auto IP discovery fails, manually define the public IP
+# of this server in your 'env' file, as variable 'VPN_PUBLIC_IP'.
 PUBLIC_IP=${VPN_PUBLIC_IP:-''}
 
-# Try to auto discover IPs of this server
+# Try to auto discover IP of this server
 [ -z "$PUBLIC_IP" ] && PUBLIC_IP=$(dig @resolver1.opendns.com -t A -4 myip.opendns.com +short)
-PRIVATE_IP=$(ip -4 route get 1 | awk '{print $NF;exit}')
 
-# Check IPs for correct format
-check_ip "$PUBLIC_IP" || PUBLIC_IP=$(wget -t 3 -T 15 -qO- http://whatismyip.akamai.com)
+# Check IP for correct format
 check_ip "$PUBLIC_IP" || PUBLIC_IP=$(wget -t 3 -T 15 -qO- http://ipv4.icanhazip.com)
-check_ip "$PUBLIC_IP" || exiterr "Cannot find valid public IP. Define it in your 'env' file as 'VPN_PUBLIC_IP'."
-check_ip "$PRIVATE_IP" || PRIVATE_IP=$(ifconfig eth0 | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
-check_ip "$PRIVATE_IP" || exiterr "Cannot find valid private IP."
+check_ip "$PUBLIC_IP" || exiterr "Cannot detect this server's public IP. Define it in your 'env' file as 'VPN_PUBLIC_IP'."
+
+L2TP_NET=${VPN_L2TP_NET:-'192.168.42.0/24'}
+L2TP_LOCAL=${VPN_L2TP_LOCAL:-'192.168.42.1'}
+L2TP_POOL=${VPN_L2TP_POOL:-'192.168.42.10-192.168.42.250'}
+XAUTH_NET=${VPN_XAUTH_NET:-'192.168.43.0/24'}
+XAUTH_POOL=${VPN_XAUTH_POOL:-'192.168.43.10-192.168.43.250'}
+DNS_SRV1=${VPN_DNS_SRV1:-'8.8.8.8'}
+DNS_SRV2=${VPN_DNS_SRV2:-'8.8.4.4'}
 
 # Create IPsec (Libreswan) config
 cat > /etc/ipsec.conf <<EOF
 version 2.0
 
 config setup
-  nat_traversal=yes
-  virtual_private=%v4:10.0.0.0/8,%v4:192.168.0.0/16,%v4:172.16.0.0/12,%v4:!192.168.42.0/23
+  virtual-private=%v4:10.0.0.0/8,%v4:192.168.0.0/16,%v4:172.16.0.0/12,%v4:!$L2TP_NET,%v4:!$XAUTH_NET
   protostack=netkey
-  nhelpers=0
   interfaces=%defaultroute
   uniqueids=no
 
 conn shared
-  left=$PRIVATE_IP
+  left=%defaultroute
   leftid=$PUBLIC_IP
   right=%any
   encapsulation=yes
@@ -81,8 +107,6 @@ conn shared
 
 conn l2tp-psk
   auto=add
-  leftsubnet=$PRIVATE_IP/32
-  leftnexthop=%defaultroute
   leftprotoport=17/1701
   rightprotoport=17/%any
   type=transport
@@ -92,9 +116,8 @@ conn l2tp-psk
 conn xauth-psk
   auto=add
   leftsubnet=0.0.0.0/0
-  rightaddresspool=192.168.43.10-192.168.43.250
-  modecfgdns1=8.8.8.8
-  modecfgdns2=8.8.4.4
+  rightaddresspool=$XAUTH_POOL
+  modecfgdns="$DNS_SRV1, $DNS_SRV2"
   leftxauthserver=yes
   rightxauthclient=yes
   leftmodecfgserver=yes
@@ -109,17 +132,17 @@ EOF
 
 # Specify IPsec PSK
 cat > /etc/ipsec.secrets <<EOF
-$PUBLIC_IP  %any  : PSK "$VPN_IPSEC_PSK"
+%any  %any  : PSK "$VPN_IPSEC_PSK"
 EOF
 
 # Create xl2tpd config
-cat > /etc/xl2tpd/xl2tpd.conf <<'EOF'
+cat > /etc/xl2tpd/xl2tpd.conf <<EOF
 [global]
 port = 1701
 
 [lns default]
-ip range = 192.168.42.10-192.168.42.250
-local ip = 192.168.42.1
+ip range = $L2TP_POOL
+local ip = $L2TP_LOCAL
 require chap = yes
 refuse pap = yes
 require authentication = yes
@@ -129,17 +152,16 @@ length bit = yes
 EOF
 
 # Set xl2tpd options
-cat > /etc/ppp/options.xl2tpd <<'EOF'
+cat > /etc/ppp/options.xl2tpd <<EOF
++mschap-v2
 ipcp-accept-local
 ipcp-accept-remote
-ms-dns 8.8.8.8
-ms-dns 8.8.4.4
+ms-dns $DNS_SRV1
+ms-dns $DNS_SRV2
 noccp
 auth
-crtscts
 mtu 1280
 mru 1280
-lock
 proxyarp
 lcp-echo-failure 4
 lcp-echo-interval 30
@@ -148,47 +170,51 @@ EOF
 
 # Update sysctl settings
 SYST='/sbin/sysctl -e -q -w'
+if [ "$(getconf LONG_BIT)" = "64" ]; then
+  SHM_MAX=68719476736
+  SHM_ALL=4294967296
+else
+  SHM_MAX=4294967295
+  SHM_ALL=268435456
+fi
 $SYST kernel.msgmnb=65536
 $SYST kernel.msgmax=65536
-$SYST kernel.shmmax=68719476736
-$SYST kernel.shmall=4294967296
+$SYST kernel.shmmax=$SHM_MAX
+$SYST kernel.shmall=$SHM_ALL
 $SYST net.ipv4.ip_forward=1
-$SYST net.ipv4.tcp_syncookies=1
 $SYST net.ipv4.conf.all.accept_source_route=0
-$SYST net.ipv4.conf.default.accept_source_route=0
 $SYST net.ipv4.conf.all.accept_redirects=0
-$SYST net.ipv4.conf.default.accept_redirects=0
 $SYST net.ipv4.conf.all.send_redirects=0
-$SYST net.ipv4.conf.default.send_redirects=0
-$SYST net.ipv4.conf.lo.send_redirects=0
-$SYST net.ipv4.conf.eth0.send_redirects=0
 $SYST net.ipv4.conf.all.rp_filter=0
+$SYST net.ipv4.conf.default.accept_source_route=0
+$SYST net.ipv4.conf.default.accept_redirects=0
+$SYST net.ipv4.conf.default.send_redirects=0
 $SYST net.ipv4.conf.default.rp_filter=0
-$SYST net.ipv4.conf.lo.rp_filter=0
+$SYST net.ipv4.conf.eth0.send_redirects=0
 $SYST net.ipv4.conf.eth0.rp_filter=0
-$SYST net.ipv4.icmp_echo_ignore_broadcasts=1
-$SYST net.ipv4.icmp_ignore_bogus_error_responses=1
-$SYST net.core.wmem_max=12582912
-$SYST net.core.rmem_max=12582912
-$SYST net.ipv4.tcp_rmem="10240 87380 12582912"
-$SYST net.ipv4.tcp_wmem="10240 87380 12582912"
 
 # Create IPTables rules
-iptables -I INPUT 1 -p udp -m multiport --dports 500,4500 -j ACCEPT
-iptables -I INPUT 2 -p udp --dport 1701 -m policy --dir in --pol ipsec -j ACCEPT
-iptables -I INPUT 3 -p udp --dport 1701 -j DROP
+iptables -I INPUT 1 -p udp --dport 1701 -m policy --dir in --pol none -j DROP
+iptables -I INPUT 2 -m conntrack --ctstate INVALID -j DROP
+iptables -I INPUT 3 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -I INPUT 4 -p udp -m multiport --dports 500,4500 -j ACCEPT
+iptables -I INPUT 5 -p udp --dport 1701 -m policy --dir in --pol ipsec -j ACCEPT
+iptables -I INPUT 6 -p udp --dport 1701 -j DROP
 iptables -I FORWARD 1 -m conntrack --ctstate INVALID -j DROP
 iptables -I FORWARD 2 -i eth+ -o ppp+ -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -I FORWARD 3 -i ppp+ -o eth+ -j ACCEPT
-iptables -I FORWARD 4 -i ppp+ -o ppp+ -s 192.168.42.0/24 -d 192.168.42.0/24 -j ACCEPT
-iptables -I FORWARD 5 -i eth+ -d 192.168.43.0/24 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-iptables -I FORWARD 6 -s 192.168.43.0/24 -o eth+ -j ACCEPT
-# Uncomment to DROP traffic between VPN clients themselves
-# iptables -I FORWARD 2 -i ppp+ -o ppp+ -s 192.168.42.0/24 -d 192.168.42.0/24 -j DROP
-# iptables -I FORWARD 3 -s 192.168.43.0/24 -d 192.168.43.0/24 -j DROP
+iptables -I FORWARD 4 -i ppp+ -o ppp+ -s "$L2TP_NET" -d "$L2TP_NET" -j ACCEPT
+iptables -I FORWARD 5 -i eth+ -d "$XAUTH_NET" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -I FORWARD 6 -s "$XAUTH_NET" -o eth+ -j ACCEPT
+# Uncomment if you wish to disallow traffic between VPN clients themselves
+# iptables -I FORWARD 2 -i ppp+ -o ppp+ -s "$L2TP_NET" -d "$L2TP_NET" -j DROP
+# iptables -I FORWARD 3 -s "$XAUTH_NET" -d "$XAUTH_NET" -j DROP
 iptables -A FORWARD -j DROP
-iptables -t nat -I POSTROUTING -s 192.168.43.0/24 -o eth+ -m policy --dir out --pol none -j SNAT --to-source "$PRIVATE_IP"
-iptables -t nat -I POSTROUTING -s 192.168.42.0/24 -o eth+ -j SNAT --to-source "$PRIVATE_IP"
+iptables -t nat -I POSTROUTING -s "$XAUTH_NET" -o eth+ -m policy --dir out --pol none -j MASQUERADE
+iptables -t nat -I POSTROUTING -s "$L2TP_NET" -o eth+ -j MASQUERADE
+
+# Update file attributes
+chmod 600 /etc/ipsec.secrets /etc/ppp/chap-secrets /etc/ipsec.d/passwd
 
 # Load IPsec NETKEY kernel module
 modprobe af_key
