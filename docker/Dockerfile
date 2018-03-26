@@ -35,7 +35,7 @@ RUN apt-get -yqq update \
     && apt-get -yqq autoremove \
     && apt-get -y clean \
     && rm -rf /var/lib/apt/lists/* \
-    && rm /etc/ipsec.secrets /etc/ppp/chap-secrets
+    && rm -f /etc/ppp/chap-secrets /etc/ipsec.d/passwd /etc/ipsec.secrets
 
 COPY ./run.sh /opt/src/run.sh
 COPY ./adduser.sh /opt/src/adduser.sh
