@@ -1,2 +1,3 @@
 #!/bin/sh
-docker exec -it ipsec-vpn-server /adduser.sh "$1"
+
+docker exec -i -t ipsec-vpn-server /opt/src/adduser.sh "$1"

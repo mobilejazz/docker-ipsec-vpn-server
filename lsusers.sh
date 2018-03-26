@@ -1,3 +1,3 @@
 #!/bin/sh
 
-docker exec -it ipsec-vpn-server /lsusers.sh
+docker exec -i -t ipsec-vpn-server /opt/src/lsusers.sh

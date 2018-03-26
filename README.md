@@ -65,11 +65,28 @@ To check the status of your IPsec VPN server, you can pass `ipsec status` to you
 ./status.sh
 ```
 
+### Customize DNS settings / Environment variables
+
+You can customize DNS settings by creating an .env file which contains variables looking like this:
+
+```
+VPN_DNS_SRV1=172.17.0.1
+VPN_DNS_SRV2=172.17.0.1
+```
+
+After that you alter the start.sh file and adds the path to your environment file:
+
+```
+docker run \
+    --name ipsec-vpn-server \
+    --env-file /root/vpn-dns.env \
+```
+
 ## Next steps
 
 Get your computer or device to use the VPN. Please refer to:
 
-[Configure IPsec/L2TP VPN Clients](https://github.com/hwdsl2/setup-ipsec-vpn/blob/master/docs/clients.md)   
+[Configure IPsec/L2TP VPN Clients](https://github.com/hwdsl2/setup-ipsec-vpn/blob/master/docs/clients.md)
 [Configure IPsec/XAuth ("Cisco IPsec") VPN Clients](https://github.com/hwdsl2/setup-ipsec-vpn/blob/master/docs/clients-xauth.md)
 
 If you get an error when trying to connect, see [Troubleshooting](https://github.com/hwdsl2/setup-ipsec-vpn/blob/master/docs/clients.md#troubleshooting).
