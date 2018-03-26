@@ -47,7 +47,13 @@ ip link delete dummy0 >/dev/null 2>&1
 mkdir -p /opt/src
 
 # Remove whitespace and quotes around VPN variables, if any
-VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 16)"
+VPN_IPSEC_PSK="$(awk '{print $5}' /etc/ipsec.secrets | cut -d'"' -f2)"
+
+if [ -z "$VPN_IPSEC_PSK" ]; then
+  VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 16)"
+  echo "Generated PSK: $VPN_IPSEC_PSK"
+fi
+
 VPN_IPSEC_PSK="$(nospaces "$VPN_IPSEC_PSK")"
 VPN_IPSEC_PSK="$(noquotes "$VPN_IPSEC_PSK")"
 
