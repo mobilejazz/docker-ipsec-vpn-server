@@ -26,6 +26,7 @@ RUN sed -i "s/httpredir\.debian\.org/ftp.us.debian.org/g" /etc/apt/sources.list 
     && rm -f "libreswan.tar.gz" \
     && cd "libreswan-${SWAN_VER}" \
     && echo "WERROR_CFLAGS =" > Makefile.inc.local \
+    && echo "USE_DNSSEC=false =" >> Makefile.inc.local \
     && make -s programs \
     && make -s install \
     && cd /opt/src \
