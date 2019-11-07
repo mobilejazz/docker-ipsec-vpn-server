@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Docker script to configure and start an IPsec VPN server
 #
@@ -104,6 +104,33 @@ conn xauth-psk
   ikev2=never
   cisco-unity=yes
   also=shared
+
+conn ikev2-cp
+  left=%defaultroute
+  leftcert=$PUBLIC_IP
+  leftid=@$PUBLIC_IP
+  leftsendcert=always
+  leftsubnet=0.0.0.0/0
+  leftrsasigkey=%cert
+  right=%any
+  rightid=%fromcert
+  rightaddresspool=192.168.43.10-192.168.43.250
+  rightca=%same
+  rightrsasigkey=%cert
+  narrowing=yes
+  dpddelay=30
+  dpdtimeout=120
+  dpdaction=clear
+  auto=add
+  ikev2=insist
+  rekey=no
+  pfs=no
+  ike-frag=yes
+  ike=aes256-sha2,aes128-sha2,aes256-sha1,aes128-sha1,aes256-sha2;modp1024,aes128-sha1;modp1024
+  phase2alg=aes_gcm-null,aes128-sha1,aes256-sha1,aes128-sha2,aes256-sha2
+  modecfgdns="8.8.8.8 8.8.4.4"
+  encapsulation=yes
+  mobike=no
 EOF
 
 # Specify IPsec PSK
@@ -142,6 +169,26 @@ lcp-echo-failure 4
 lcp-echo-interval 30
 connect-delay 5000
 EOF
+
+# CA certificate
+if [ ! -f /etc/ipsec.d/pkcs11.txt ]; then
+	certutil -z <(head -c 1024 /dev/urandom) \
+	  -S -x -n "IKEv2 VPN CA" \
+	  -s "O=IKEv2 VPN,CN=IKEv2 VPN CA" \
+	  -k rsa -g 4096 -v 360 \
+	  -d sql:/etc/ipsec.d -t "CT,," -2
+fi
+# Server certificate
+if [ ! -f /etc/ipsec.d/$PUBLIC_IP.p12 ]; then
+	certutil -z <(head -c 1024 /dev/urandom) \
+	  -S -c "IKEv2 VPN CA" -n "$PUBLIC_IP" \
+	  -s "O=IKEv2 VPN,CN=$PUBLIC_IP" \
+	  -k rsa -g 4096 -v 36 \
+	  -d sql:/etc/ipsec.d -t ",," \
+	  --keyUsage digitalSignature,keyEncipherment \
+	  --extKeyUsage serverAuth \
+	  --extSAN "ip:$PUBLIC_IP,dns:$PUBLIC_IP"
+fi
 
 # Update sysctl settings
 SYST='/sbin/sysctl -e -q -w'
@@ -195,6 +242,7 @@ mkdir -p /var/run/pluto /var/run/xl2tpd
 rm -f /var/run/pluto/pluto.pid /var/run/xl2tpd.pid
 
 [ -f /pre-up.sh ] && /pre-up.sh
+/api &
 
 /usr/local/sbin/ipsec start
 exec /usr/sbin/xl2tpd -D -c /etc/xl2tpd/xl2tpd.conf
