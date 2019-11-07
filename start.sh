@@ -12,12 +12,10 @@ if [ -f etc/pre-up.sh ]; then
     EXTRA_ARGS="-v $PWD/etc/pre-up.sh:/pre-up.sh"
 fi
 
-docker rm -f ipsec-vpn-server
 docker run \
     --name ipsec-vpn-server \
     -p 500:500/udp \
     -p 4500:4500/udp \
-    -p 3000:3000/tcp \
     -v /lib/modules:/lib/modules:ro \
     -v "$PWD/etc/ppp/chap-secrets:/etc/ppp/chap-secrets" \
     -v "$PWD/etc/ipsec.d/passwd:/etc/ipsec.d/passwd" \

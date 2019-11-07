@@ -45,7 +45,6 @@ COPY ./run.sh /run.sh
 COPY ./adduser.sh /adduser.sh
 COPY ./lsusers.sh /lsusers.sh
 COPY ./rmuser.sh /rmuser.sh
-COPY ./api /api
 RUN chmod 755 /run.sh /adduser.sh /lsusers.sh /rmuser.sh
 
 EXPOSE 500/udp 4500/udp
