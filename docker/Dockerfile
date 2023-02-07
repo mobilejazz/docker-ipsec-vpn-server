@@ -1,8 +1,8 @@
-FROM debian:9.9
+FROM debian:11
 MAINTAINER Jordi Gimenez <info@mobilejazz.com>
 
 ENV REFRESHED_AT 2019-05-31
-ENV SWAN_VER 3.27
+ENV SWAN_VER 4.9
 
 WORKDIR /opt/src
 
@@ -11,16 +11,19 @@ ENV USE_DH31=false
 
 RUN sed -i "s/httpredir\.debian\.org/ftp.us.debian.org/g" /etc/apt/sources.list \
     && apt-get -yqq update \
-    && DEBIAN_FRONTEND=noninteractive apt-get -yqq --no-install-recommends install \
+    && apt-get -y upgrade
+
+RUN  DEBIAN_FRONTEND=noninteractive apt-get -yqq --no-install-recommends install \
          wget dnsutils openssl ca-certificates kmod \
-         iproute gawk grep sed net-tools iptables \
-         bsdmainutils libunbound2 libcurl3-nss \
+         iproute2 gawk grep sed net-tools iptables \
+         bsdmainutils unbound libcurl3-nss \
          libnss3-tools libevent-dev libcap-ng0 xl2tpd \
          libnss3-dev libnspr4-dev pkg-config libpam0g-dev libldns-dev \
          libcap-ng-dev libcap-ng-utils libselinux1-dev \
          libcurl4-nss-dev libsystemd-dev flex bison gcc make \
-         libunbound-dev xmlto \
-    && wget -t 3 -T 30 -nv -O "libreswan.tar.gz" "https://download.libreswan.org/libreswan-${SWAN_VER}.tar.gz" \
+         libunbound-dev xmlto
+ 
+RUN  wget -t 3 -T 30 -nv -O "libreswan.tar.gz" "https://download.libreswan.org/libreswan-${SWAN_VER}.tar.gz" \
     || wget -t 3 -T 30 -nv -O "libreswan.tar.gz" "https://github.com/libreswan/libreswan/archive/v${SWAN_VER}.tar.gz" \
     && tar xzf "libreswan.tar.gz" \
     && rm -f "libreswan.tar.gz" \
@@ -30,8 +33,9 @@ RUN sed -i "s/httpredir\.debian\.org/ftp.us.debian.org/g" /etc/apt/sources.list 
     && make -s programs \
     && make -s install \
     && cd /opt/src \
-    && rm -rf "/opt/src/libreswan-${SWAN_VER}" \
-    && apt-get -yqq remove \
+    && rm -rf "/opt/src/libreswan-${SWAN_VER}"
+
+RUN  apt-get -yqq remove \
          libnss3-dev libnspr4-dev pkg-config libpam0g-dev \
          libcap-ng-dev libcap-ng-utils libselinux1-dev \
          libcurl4-nss-dev libsystemd-dev flex bison gcc make \
